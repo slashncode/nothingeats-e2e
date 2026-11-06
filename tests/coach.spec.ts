@@ -11,7 +11,7 @@ test('the craving coach answers with dishes', async ({ page, customer }) => {
 
     const log = page.getByRole('log', { name: 'Gespräch mit dem Craving Coach' });
     await expect(log.getByText(/Gesucht: „.+“/)).toBeVisible({ timeout: 60_000 });
-    const cards = log.getByRole('region', { name: 'Vorschläge des Craving Coach' }).getByRole('article');
+    const cards = log.getByRole('list', { name: 'Vorschläge des Craving Coach' }).getByRole('article');
     await expect(cards.first()).toBeVisible();
-    await expect(cards).not.toHaveCount(0);
+    await expect(cards.first().getByRole('button', { name: /in den Warenkorb$/ })).toBeEnabled();
 });

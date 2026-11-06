@@ -44,6 +44,10 @@ export async function restaurantToOrderFrom(request: APIRequestContext) {
 
 async function openAroundTheClock(request: APIRequestContext, slug: string) {
     const headers = { authorization: `Bearer ${await adminToken(request)}` };
+    // The backoffice knows an admin from their first sign-in there, as its login form does it.
+    const session = await request.post('/api/backoffice/admins/session', { headers });
+    expect(session.ok(), `backoffice sign-in: ${await session.text()}`).toBe(true);
+
     const found = await request.get('/api/backoffice/restaurants', {
         headers,
         params: { 'where[slug][equals]': slug, 'depth': 0 },
