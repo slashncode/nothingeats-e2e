@@ -1,0 +1,16 @@
+{
+    "compilerOptions": {
+        "target": "ES2023",
+        "lib": ["DOM", "ES2023"],
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "types": ["node"],
+        "allowImportingTsExtensions": true,
+        "strict": true,
+        "noUncheckedIndexedAccess": true,
+        "noEmit": true,
+        "isolatedModules": true,
+        "skipLibCheck": true
+    },
+    "include": ["*.ts", "tests", "k6"]
+}

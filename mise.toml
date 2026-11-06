@@ -1,0 +1,8 @@
+# Tools for the system tests, in CI and on a laptop. Same pins as the hub's mise.toml.
+[tools]
+node = "24.22.1"
+pnpm = "12.15.0"
+k3d = "5.9.0"
+kubectl = "1.36.5" # matches the k3s version in k3d/ci.yaml
+flux2 = "2.9.6"
+k6 = "2.3.0"

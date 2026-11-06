@@ -1,0 +1,3 @@
+# pnpm settings (no workspace packages). pnpm writes some of these itself.
+shellEmulator: true
+trustPolicy: no-downgrade

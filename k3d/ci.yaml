@@ -1,0 +1,26 @@
+# Throwaway cluster for the system tests: scripts/cluster-up.sh. Like the hub's k3d/cluster.yaml,
+# but only the gateway is published (tests go through it like a browser does), and no registry.
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: nothingeats-ci
+servers: 1
+agents: 0
+image: rancher/k3s:v1.36.5-k3s1
+
+ports:
+  - port: 127.0.0.1:80:80
+    nodeFilters: [loadbalancer]
+
+options:
+  k3s:
+    extraArgs:
+      # Traefik comes from nothingeats-gitops, like in every other cluster.
+      - arg: --disable=traefik
+        nodeFilters: [server:*]
+      # Nobody reads metrics in a test run; the memory goes to the shop.
+      - arg: --disable=metrics-server
+        nodeFilters: [server:*]
+  kubeconfig:
+    updateDefaultKubeconfig: true
+    switchCurrentContext: false
