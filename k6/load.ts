@@ -76,11 +76,15 @@ function pick<T>(items: T[]): T {
     return items[Math.floor(Math.random() * items.length)]!;
 }
 
+// k6 wants whole iterations per second: checkouts at a tenth, at least one.
 function stages(scale: number) {
-    return STEPS.flatMap(rate => [
-        { target: rate * scale, duration: `${RAMP_SECONDS}s` },
-        { target: rate * scale, duration: `${HOLD_SECONDS}s` },
-    ]);
+    return STEPS.flatMap((rate) => {
+        const target = Math.max(1, Math.round(rate * scale));
+        return [
+            { target, duration: `${RAMP_SECONDS}s` },
+            { target, duration: `${HOLD_SECONDS}s` },
+        ];
+    });
 }
 
 /** The step the scenario is in now; requests carry it as the `step` tag. */

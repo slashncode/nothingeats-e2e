@@ -19,7 +19,8 @@ on:
       steps:
         description: Visitors per second at each step
         type: string
-        default: 10,25,50,100,200,300,400,600,800
+        # Quoted: unquoted, the default reached k6 without its commas, as one number.
+        default: '10,25,50,100,200,300,400,600,800'
 
 permissions: {}
 
