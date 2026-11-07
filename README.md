@@ -24,6 +24,12 @@ throwaway Kubernetes cluster and gets tested the way a customer uses it.
 5. **k6** (`k6/smoke.ts`): five visitors browse and search for 30 seconds; any error or a p95
    above 500 ms fails the run.
 
+6. **Load** (`k6/load.ts`, by hand: Actions -> load): visitors arrive at a rate that climbs in
+   one-minute steps (10 to 800 a second; each visitor opens the shop, a restaurant list, a menu,
+   the deals, a suggestion and a search with varied words and filters), optionally with checkouts
+   at a tenth of that rate. A step whose p95 passes a second or whose errors pass 1 % ends the run;
+   the job summary shows each step and every pod that restarted.
+
 A failed run uploads the Playwright report with traces and videos, and the cluster's Flux state,
 events and pod logs.
 
@@ -43,7 +49,13 @@ pnpm install
 pnpm exec playwright install chromium
 pnpm test        # against the local cluster at nothingeats.localhost
 pnpm smoke       # k6 against the same
+pnpm load        # the stepped load test, read paths only: changes nothing (STEPS=400,600 picks steps)
 ```
+
+`ORDERS=true pnpm load` adds checkouts by four accounts `load-<n>@nothingeats.dev`. Every order is
+real, with mails, a delivery and rewards, so that belongs on a throwaway cluster (the `load`
+workflow), not on the local one. k6 runs on the same machine as a local cluster and takes its
+share of the CPU.
 
 Against the local cluster the tests use the content that is there and never change it: the order
 test takes any open restaurant (and skips when all are closed), and new accounts are

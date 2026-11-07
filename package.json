@@ -18,7 +18,8 @@
         "typecheck": "tsc --noEmit",
         "test": "playwright test --project shop",
         "chaos": "playwright test --project chaos",
-        "smoke": "k6 run k6/smoke.ts"
+        "smoke": "k6 run k6/smoke.ts",
+        "load": "k6 run k6/load.ts"
     },
     "devDependencies": {
         "@antfu/eslint-config": "^10.0.0",
