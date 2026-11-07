@@ -82,13 +82,25 @@ test('an order placed while Kafka is down arrives once', async ({ request }) => 
     crash(kafkaBroker);
     // Checkout needs no broker: the event waits in ordering's outbox until Kafka is back.
     const orderId = await api.order(menu.restaurant, dish, quantity);
-    since('order placed');
+    since(`order placed (quote: ${await api.quoteSource(orderId)})`);
 
-    await expect.poll(() => ready(kafkaBroker), {
+    // Meanwhile the shop keeps answering: browsing and search need no broker either.
+    const unavailable: string[] = [];
+    await expect.poll(async () => {
+        for (const path of ['/api/catalog/v1/restaurants', '/api/search/v1/dishes?q=pizza', `/api/delivery/v1/deliveries/${orderId}`]) {
+            const response = await request.get(path, {
+                headers: { authorization: `Bearer ${api.token}` },
+            });
+            if (response.status() >= 500)
+                unavailable.push(`${path} ${response.status()}`);
+        }
+        return ready(kafkaBroker);
+    }, {
         timeout: 180_000,
-        intervals: [1_000],
+        intervals: [2_000],
     }).toBe(true);
     since('Kafka ready again');
+    expect(unavailable, 'answers while Kafka was down').toEqual([]);
     await expect.poll(() => api.deliveryStatus(orderId), {
         timeout: 240_000,
         intervals: [1_000],

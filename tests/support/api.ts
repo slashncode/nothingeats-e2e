@@ -8,7 +8,7 @@ import { expect } from '@playwright/test';
 export class CustomerApi {
     private constructor(
         private readonly request: APIRequestContext,
-        private readonly token: string,
+        readonly token: string,
     ) {}
 
     static async signIn(request: APIRequestContext, account: Account): Promise<CustomerApi> {
@@ -52,6 +52,11 @@ export class CustomerApi {
 
     async orderStatus(orderId: string): Promise<string> {
         return (await this.json<{ status: string }>(`/api/ordering/v1/orders/${orderId}`)).status;
+    }
+
+    /** `delivery` when delivery-service quoted the order, `estimate` when checkout had to guess. */
+    async quoteSource(orderId: string): Promise<string> {
+        return (await this.json<{ quoteSource: string }>(`/api/ordering/v1/orders/${orderId}`)).quoteSource;
     }
 
     async orderCount(): Promise<number> {
