@@ -18,8 +18,10 @@ throwaway Kubernetes cluster and gets tested the way a customer uses it.
    30-minute delivery takes 36 seconds.
 4. **Playwright** (`tests/`) goes through the shop in a browser: register, confirm the mail from
    Mailpit, sign in, fill the cart, pay with willpower, watch nothing arrive on the live stream,
-   get the mails and the first badge. Plus search (compound suggestions, facets) and the Craving
-   Coach. Every seeded restaurant is closed at night, so on a CI cluster the admin first opens
+   get the mails and the first badge. Plus search (compound suggestions, facets), the Craving
+   Coach, a forgotten password from the mail to the new one, the backoffice, and (disposable
+   cluster only, the admin sets the wheel's odds) level 2 from two orders, a spin, and a coupon
+   that makes the next order 10 % cheaper. Every seeded restaurant is closed at night, so on a CI cluster the admin first opens
    Phantom Pizza around the clock through the backoffice, which also tests that path.
 5. **k6** (`k6/smoke.ts`): five visitors browse and search for 30 seconds; any error or a p95
    above 500 ms fails the run.

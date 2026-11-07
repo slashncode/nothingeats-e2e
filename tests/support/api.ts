@@ -71,6 +71,21 @@ export class CustomerApi {
             : undefined;
     }
 
+    /** The order as the customer sees it, with its discount and coupon. */
+    async orderDetails(orderId: string): Promise<{ status: string; discountCents: number; couponCode: string | null; subtotalCents: number }> {
+        return this.json(`/api/ordering/v1/orders/${orderId}`);
+    }
+
+    /** Spins left on the wheel, as loyalty counts them. */
+    async spinsAvailable(): Promise<number> {
+        return (await this.json<{ spinsAvailable: number }>('/api/loyalty/v1/me')).spinsAvailable;
+    }
+
+    /** Coupons loyalty still holds for the customer. */
+    async coupons(): Promise<{ code: string; kind: string }[]> {
+        return (await this.json<{ items: { code: string; kind: string }[] }>('/api/loyalty/v1/coupons')).items;
+    }
+
     /** Delivered orders as loyalty counted them. */
     async rewardedOrders(): Promise<number> {
         return (await this.json<{ stats: { orders: number } }>('/api/loyalty/v1/me')).stats.orders;

@@ -51,11 +51,17 @@ export async function restaurantToOrderFrom(request: APIRequestContext) {
     return restaurant(request, open!.slug);
 }
 
-async function openAroundTheClock(request: APIRequestContext, slug: string) {
+/** Headers for the backoffice's API as the admin. */
+async function asAdmin(request: APIRequestContext) {
     const headers = { authorization: `Bearer ${await adminToken(request)}` };
     // The backoffice knows an admin from their first sign-in there, as its login form does it.
     const session = await request.post('/api/backoffice/admins/session', { headers });
     expect(session.ok(), `backoffice sign-in: ${await session.text()}`).toBe(true);
+    return headers;
+}
+
+async function openAroundTheClock(request: APIRequestContext, slug: string) {
+    const headers = await asAdmin(request);
 
     const found = await request.get('/api/backoffice/restaurants', {
         headers,
@@ -76,4 +82,41 @@ async function openAroundTheClock(request: APIRequestContext, slug: string) {
         message: `${slug} open in the catalog`,
         timeout: 30_000,
     }).toBe(true);
+}
+
+interface WheelProfile {
+    name: string;
+    weights: { prize: string; weight: number }[];
+}
+
+/**
+ * The admin makes the wheel's default odds profile land on [prize] every time (only on a
+ * disposable cluster: the odds are content). Loyalty receives the published wheel through the
+ * backoffice's outbox within seconds; the spin that depends on it comes minutes later.
+ */
+export async function wheelAlwaysLandsOn(request: APIRequestContext, prize: string) {
+    const headers = await asAdmin(request);
+    const current = await request.get('/api/backoffice/globals/wheel', {
+        headers,
+        params: { depth: 0 },
+    });
+    expect(current.ok(), await current.text()).toBe(true);
+    const { profiles } = await current.json() as { profiles: WheelProfile[] };
+    const rigged = profiles.map(profile => profile.name === 'default'
+        ? {
+                ...profile,
+                weights: profile.weights.map(entry => ({
+                    ...entry,
+                    weight: entry.prize === prize
+                        ? 1
+                        : 0,
+                })),
+            }
+        : profile);
+    const published = await request.post('/api/backoffice/globals/wheel', {
+        headers,
+        params: { publishAllLocales: 'true' },
+        data: { profiles: rigged, _status: 'published' },
+    });
+    expect(published.ok(), await published.text()).toBe(true);
 }
