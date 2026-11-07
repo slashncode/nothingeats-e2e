@@ -21,4 +21,16 @@ test('an admin signs in and finds content and operations', async ({ page }) => {
 
     await nav.getByRole('link', { name: 'Suchindex' }).click();
     await expect(page.getByText('Aktive Generation')).toBeVisible();
+
+    // Accounts come from identity, transcripts from the assistant, each with the admin's token.
+    await nav.getByRole('link', { name: 'Konten' }).click();
+    await page.getByRole('searchbox').fill(admin.email);
+    await expect(page.getByRole('cell', { name: admin.email })).toBeVisible();
+    await expect(page.getByRole('alert')).toHaveCount(0);
+
+    await nav.getByRole('link', { name: 'Coach-Gespräche' }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Coach-Gespräche' })).toBeVisible();
+    // Loaded means a conversation or the note that there is none; a failed call shows an alert.
+    await expect(page.getByRole('row').nth(1).or(page.getByText('Keine Gespräche gefunden.')).or(page.getByRole('alert'))).toBeVisible();
+    await expect(page.getByRole('alert')).toHaveCount(0);
 });
