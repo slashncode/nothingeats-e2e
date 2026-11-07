@@ -36,14 +36,23 @@ async function newCustomer(request: APIRequestContext) {
     };
 }
 
-async function expectDeliveredOnce(api: CustomerApi, account: Account, orderId: string, restaurantName: string) {
+async function expectDeliveredOnce(
+    api: CustomerApi,
+    account: Account,
+    orderId: string,
+    restaurantName: string,
+    since: (stage: string) => void = () => {},
+) {
     await expect.poll(() => api.orderStatus(orderId), {
         message: 'the order arrives',
         timeout: 240_000,
         intervals: [1_000, 2_000],
     }).toBe('DELIVERED');
+    since('ordering has it delivered');
     await waitForMail(account.email, /^Dein Nichts ist da$/);
+    since('delivery mail sent');
     await expect.poll(() => api.rewardedOrders(), { message: 'loyalty counts the order', timeout: 60_000 }).toBe(1);
+    since('loyalty counted it');
 
     await new Promise(resolve => setTimeout(resolve, DUPLICATE_WINDOW_MS));
     expect(await api.orderCount(), 'orders').toBe(1);
@@ -85,8 +94,13 @@ test('an order placed while Kafka is down arrives once', async ({ request }) => 
         intervals: [1_000],
     }).toBeDefined();
     since('delivery has the order');
+    await expect.poll(() => api.deliveryStatus(orderId), {
+        timeout: 240_000,
+        intervals: [1_000],
+    }).toBe('DELIVERED');
+    since('the courier arrived (delivery)');
 
-    await expectDeliveredOnce(api, account, orderId, menu.restaurant.name);
+    await expectDeliveredOnce(api, account, orderId, menu.restaurant.name, since);
     since('delivered once');
 });
 
