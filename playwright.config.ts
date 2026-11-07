@@ -13,6 +13,7 @@ const reporters: ReporterDescription[] = [
 ];
 
 export default defineConfig({
+    globalSetup: './tests/global-setup.ts',
     // A whole order with delivery runs in one test; locally a delivery takes three minutes.
     timeout: 5 * 60_000,
     expect: { timeout: 15_000 },
