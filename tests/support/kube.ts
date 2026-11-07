@@ -31,3 +31,9 @@ export function crash(selector: string): string[] {
     kubectl('delete', ...pods, '--grace-period=0', '--force', '--wait=false');
     return pods;
 }
+
+/** Whether a pod behind [selector] is running and ready again. */
+export function ready(selector: string): boolean {
+    const conditions = kubectl('get', 'pods', '-l', selector, '-o', 'jsonpath={.items[*].status.conditions[?(@.type=="Ready")].status}');
+    return conditions.split(' ').includes('True');
+}

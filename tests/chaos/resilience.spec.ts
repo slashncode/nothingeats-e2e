@@ -1,10 +1,11 @@
 import type { APIRequestContext } from '@playwright/test';
 import type { Account } from '../support/accounts.ts';
+import process from 'node:process';
 import { registerVerified, signIn } from '../support/accounts.ts';
 import { CustomerApi } from '../support/api.ts';
 import { disposableCluster } from '../support/env.ts';
 import { expect, test } from '../support/fixtures.ts';
-import { crash, kafkaBroker, service } from '../support/kube.ts';
+import { crash, kafkaBroker, ready, service } from '../support/kube.ts';
 import { countMails, waitForMail } from '../support/mailpit.ts';
 import { cartFor, restaurantToOrderFrom } from '../support/shop.ts';
 
@@ -17,6 +18,12 @@ test.describe.configure({ mode: 'serial' });
 /** A duplicate shows up within seconds of the original; give it that chance before counting. */
 const DUPLICATE_WINDOW_MS = 5_000;
 const ON_THE_WAY = /^(PICKED_UP|EN_ROUTE)$/;
+
+/** Logs how long each stage took after the crash, so a slow recovery shows where it waits. */
+function timeline() {
+    const start = Date.now();
+    return (stage: string) => process.stdout.write(`  ${stage} after ${Math.round((Date.now() - start) / 1000)} s\n`);
+}
 
 async function newCustomer(request: APIRequestContext) {
     const account = await registerVerified(request);
@@ -61,12 +68,26 @@ test('the courier keeps going when delivery-service crashes', async ({ request }
 
 test('an order placed while Kafka is down arrives once', async ({ request }) => {
     const { account, api, menu, dish, quantity } = await newCustomer(request);
+    const since = timeline();
 
     crash(kafkaBroker);
     // Checkout needs no broker: the event waits in ordering's outbox until Kafka is back.
     const orderId = await api.order(menu.restaurant, dish, quantity);
+    since('order placed');
+
+    await expect.poll(() => ready(kafkaBroker), {
+        timeout: 180_000,
+        intervals: [1_000],
+    }).toBe(true);
+    since('Kafka ready again');
+    await expect.poll(() => api.deliveryStatus(orderId), {
+        timeout: 240_000,
+        intervals: [1_000],
+    }).toBeDefined();
+    since('delivery has the order');
 
     await expectDeliveredOnce(api, account, orderId, menu.restaurant.name);
+    since('delivered once');
 });
 
 test('the tracking page sees the arrival although notification-service crashed', async ({ page, request }) => {
