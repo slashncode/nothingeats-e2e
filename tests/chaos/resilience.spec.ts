@@ -73,6 +73,10 @@ test('the courier keeps going when delivery-service crashes', async ({ request }
     crash(service('delivery-service'));
 
     await expectDeliveredOnce(api, account, orderId, menu.restaurant.name);
+
+    // Checkout asks the new pod for quotes again, instead of guessing on a dead connection.
+    const next = await api.order(menu.restaurant, dish, quantity);
+    expect(await api.quoteSource(next), 'quote after the restart').toBe('delivery');
 });
 
 test('an order placed while Kafka is down arrives once', async ({ request }) => {
