@@ -1,15 +1,15 @@
-import { newAccount, signIn } from './support/accounts.ts';
-import { expect, test } from './support/fixtures.ts';
-import { linkTo, waitForMail } from './support/mailpit.ts';
-import { restaurantToOrderFrom } from './support/shop.ts';
+import { newAccount, signIn } from '../support/accounts.ts';
+import { expect, test } from '../support/fixtures.ts';
+import { linkTo, waitForMail } from '../support/mailpit.ts';
+import { cartFor, restaurantToOrderFrom } from '../support/shop.ts';
 
 // The whole way through the shop, as a new customer: every service takes part.
 // identity -> notification (mails) -> catalog/ordering -> delivery (gRPC quote, simulation)
 // -> notification (live stream, mails) -> loyalty (rewards on the live stream).
 test('a new customer orders nothing and watches it arrive', async ({ page, request }) => {
-    const { restaurant, sections } = await restaurantToOrderFrom(request);
-    const dish = sections.flatMap(section => section.dishes).toSorted((a, b) => b.priceCents - a.priceCents)[0]!;
-    const quantity = Math.ceil(restaurant.minimumOrderCents / dish.priceCents);
+    const menu = await restaurantToOrderFrom(request);
+    const { restaurant } = menu;
+    const { dish, quantity } = cartFor(menu);
     const account = newAccount();
 
     await test.step('register', async () => {

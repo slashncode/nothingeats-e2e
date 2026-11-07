@@ -16,6 +16,15 @@ export interface Dish {
     priceCents: number;
 }
 
+/** The most expensive dish of the menu, as often as the minimum order needs. */
+export function cartFor({ restaurant, sections }: { restaurant: Restaurant; sections: { dishes: Dish[] }[] }) {
+    const dish = sections.flatMap(section => section.dishes).toSorted((a, b) => b.priceCents - a.priceCents)[0]!;
+    return {
+        dish,
+        quantity: Math.ceil(restaurant.minimumOrderCents / dish.priceCents),
+    };
+}
+
 /** The restaurant the CI order goes to: Phantom Pizza, from the backoffice's seed. */
 const OPEN_ALL_DAY = 'phantom-pizza';
 

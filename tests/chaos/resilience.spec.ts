@@ -1,0 +1,87 @@
+import type { APIRequestContext } from '@playwright/test';
+import type { Account } from '../support/accounts.ts';
+import { registerVerified, signIn } from '../support/accounts.ts';
+import { CustomerApi } from '../support/api.ts';
+import { disposableCluster } from '../support/env.ts';
+import { expect, test } from '../support/fixtures.ts';
+import { crash, kafkaBroker, service } from '../support/kube.ts';
+import { countMails, waitForMail } from '../support/mailpit.ts';
+import { cartFor, restaurantToOrderFrom } from '../support/shop.ts';
+
+// Parts of the cluster crash in the middle of an order. The customer may wait a little longer,
+// nothing else: the order arrives, and it arrives once (one order, one confirmation, one delivery
+// mail, one order counted by loyalty). These tests kill pods, so only on a disposable cluster.
+test.skip(!disposableCluster, 'Chaos only on a disposable cluster');
+test.describe.configure({ mode: 'serial' });
+
+/** A duplicate shows up within seconds of the original; give it that chance before counting. */
+const DUPLICATE_WINDOW_MS = 5_000;
+const ON_THE_WAY = /^(PICKED_UP|EN_ROUTE)$/;
+
+async function newCustomer(request: APIRequestContext) {
+    const account = await registerVerified(request);
+    const menu = await restaurantToOrderFrom(request);
+    return {
+        account,
+        api: await CustomerApi.signIn(request, account),
+        menu,
+        ...cartFor(menu),
+    };
+}
+
+async function expectDeliveredOnce(api: CustomerApi, account: Account, orderId: string, restaurantName: string) {
+    await expect.poll(() => api.orderStatus(orderId), {
+        message: 'the order arrives',
+        timeout: 240_000,
+        intervals: [1_000, 2_000],
+    }).toBe('DELIVERED');
+    await waitForMail(account.email, /^Dein Nichts ist da$/);
+    await expect.poll(() => api.rewardedOrders(), { message: 'loyalty counts the order', timeout: 60_000 }).toBe(1);
+
+    await new Promise(resolve => setTimeout(resolve, DUPLICATE_WINDOW_MS));
+    expect(await api.orderCount(), 'orders').toBe(1);
+    expect(await countMails(account.email, new RegExp(`^Bestellt bei ${restaurantName}`)), 'confirmation mails').toBe(1);
+    expect(await countMails(account.email, /^Dein Nichts ist da$/), 'delivery mails').toBe(1);
+    expect(await api.rewardedOrders(), 'orders counted by loyalty').toBe(1);
+}
+
+test('the courier keeps going when delivery-service crashes', async ({ request }) => {
+    const { account, api, menu, dish, quantity } = await newCustomer(request);
+    const orderId = await api.order(menu.restaurant, dish, quantity);
+    await expect.poll(() => api.deliveryStatus(orderId), {
+        timeout: 60_000,
+        intervals: [500],
+    }).toMatch(ON_THE_WAY);
+
+    // The ticker that moves deliveries along lives in these pods; the plans live in Postgres.
+    crash(service('delivery-service'));
+
+    await expectDeliveredOnce(api, account, orderId, menu.restaurant.name);
+});
+
+test('an order placed while Kafka is down arrives once', async ({ request }) => {
+    const { account, api, menu, dish, quantity } = await newCustomer(request);
+
+    crash(kafkaBroker);
+    // Checkout needs no broker: the event waits in ordering's outbox until Kafka is back.
+    const orderId = await api.order(menu.restaurant, dish, quantity);
+
+    await expectDeliveredOnce(api, account, orderId, menu.restaurant.name);
+});
+
+test('the tracking page sees the arrival although notification-service crashed', async ({ page, request }) => {
+    const { account, api, menu, dish, quantity } = await newCustomer(request);
+    await signIn(page, account);
+    const orderId = await api.order(menu.restaurant, dish, quantity);
+    await page.goto(`/orders/${orderId}`);
+    await expect.poll(() => api.deliveryStatus(orderId), {
+        timeout: 60_000,
+        intervals: [500],
+    }).toMatch(ON_THE_WAY);
+
+    // The page's live stream ends with the pod; the arrival happens while it reconnects.
+    crash(service('notification-service'));
+
+    await expect(page.getByText('Nichts ist angekommen. Guten Appetit!')).toBeVisible({ timeout: 180_000 });
+    await expectDeliveredOnce(api, account, orderId, menu.restaurant.name);
+});

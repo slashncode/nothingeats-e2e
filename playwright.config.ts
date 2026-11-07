@@ -13,7 +13,6 @@ const reporters: ReporterDescription[] = [
 ];
 
 export default defineConfig({
-    testDir: 'tests',
     // A whole order with delivery runs in one test; locally a delivery takes three minutes.
     timeout: 5 * 60_000,
     expect: { timeout: 15_000 },
@@ -35,11 +34,12 @@ export default defineConfig({
         trace: 'retain-on-failure',
         screenshot: 'only-on-failure',
         video: 'retain-on-failure',
+        ...devices['Desktop Chrome'],
     },
     projects: [
-        {
-            name: 'chromium',
-            use: { ...devices['Desktop Chrome'] },
-        },
+        // What a customer does, against any cluster: `pnpm test`.
+        { name: 'shop', testDir: 'tests/shop' },
+        // Pods crash in the middle of an order, on a disposable cluster only: `pnpm chaos`.
+        { name: 'chaos', testDir: 'tests/chaos' },
     ],
 });

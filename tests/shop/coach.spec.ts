@@ -1,7 +1,7 @@
-import type { Restaurant } from './support/shop.ts';
-import { signIn } from './support/accounts.ts';
-import { disposableCluster } from './support/env.ts';
-import { expect, test } from './support/fixtures.ts';
+import type { Restaurant } from '../support/shop.ts';
+import { signIn } from '../support/accounts.ts';
+import { disposableCluster } from '../support/env.ts';
+import { expect, test } from '../support/fixtures.ts';
 
 // web -> assistant -> search (gRPC Retrieve) -> catalog-checked cards. On the CI cluster the coach
 // runs its scripted model: it searches for what was written and shows the first three dishes.

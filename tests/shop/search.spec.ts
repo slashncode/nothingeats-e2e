@@ -1,4 +1,4 @@
-import { expect, test } from './support/fixtures.ts';
+import { expect, test } from '../support/fixtures.ts';
 
 // catalog -> search: the seed reached Elasticsearch, German compounds and facets work.
 test('a word start suggests the dish', async ({ page }) => {

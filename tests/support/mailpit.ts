@@ -11,13 +11,21 @@ interface MessageSummary {
     Subject: string;
 }
 
+async function mailsTo(to: string): Promise<MessageSummary[]> {
+    const response = await fetch(`${mailpitUrl}/api/v1/search?query=${encodeURIComponent(`to:"${to}"`)}`);
+    return (await response.json() as { messages: MessageSummary[] }).messages;
+}
+
+/** How many mails to [to] have a subject that matches. */
+export async function countMails(to: string, subject: RegExp): Promise<number> {
+    return (await mailsTo(to)).filter(message => subject.test(message.Subject)).length;
+}
+
 /** Waits until Mailpit holds a mail to [to] whose subject matches, and returns it. */
 export async function waitForMail(to: string, subject: RegExp, timeout = 60_000): Promise<Mail> {
     let id: string | undefined;
     await expect.poll(async () => {
-        const response = await fetch(`${mailpitUrl}/api/v1/search?query=${encodeURIComponent(`to:"${to}"`)}`);
-        const { messages } = await response.json() as { messages: MessageSummary[] };
-        id = messages.find(message => subject.test(message.Subject))?.ID;
+        id = (await mailsTo(to)).find(message => subject.test(message.Subject))?.ID;
         return id;
     }, {
         message: `a mail to ${to} with the subject ${subject}`,

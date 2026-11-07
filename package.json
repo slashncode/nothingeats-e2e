@@ -16,7 +16,8 @@
     "scripts": {
         "lint": "eslint .",
         "typecheck": "tsc --noEmit",
-        "test": "playwright test",
+        "test": "playwright test --project shop",
+        "chaos": "playwright test --project chaos",
         "smoke": "k6 run k6/smoke.ts"
     },
     "devDependencies": {

@@ -1,6 +1,7 @@
 # The whole shop in a throwaway k3d cluster on the runner, built by Flux from one commit of
-# nothingeats-gitops (clusters/ci), then tested like a customer would use it: Playwright, then a
-# k6 smoke run. The cluster makes its own secrets and talks to no outside service.
+# nothingeats-gitops (clusters/ci), then tested like a customer would use it: Playwright, a k6
+# smoke run, then chaos (pods crash mid-order). The cluster makes its own secrets and talks to no
+# outside service.
 #
 # Reusable: this repo runs it for its own changes and every night, nothingeats-gitops for its
 # changes (with gitops-ref set to the commit under test).
@@ -56,6 +57,10 @@ jobs:
       - name: k6 smoke
         if: ${{ !cancelled() && steps.cluster.outcome == 'success' }}
         run: pnpm smoke
+      # Last, because it crashes pods: delivery mid-delivery, the Kafka broker, notification.
+      - name: Chaos
+        if: ${{ !cancelled() && steps.cluster.outcome == 'success' }}
+        run: pnpm chaos
       - name: Diagnose
         if: failure()
         run: scripts/diagnose.sh artifacts/cluster
