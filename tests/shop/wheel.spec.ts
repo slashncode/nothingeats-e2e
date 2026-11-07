@@ -44,13 +44,15 @@ test('a customer reaches level 2, wins a coupon on the wheel and pays less with 
     expect(coupon?.kind).toBe('PERCENT');
 
     await test.step('redeem it at checkout', async () => {
-        const cart = await request.put(`/api/ordering/v1/cart/items/${dish.id}`, {
-            headers: { authorization: `Bearer ${api.token}` },
-            params: { lang: 'de' },
-            data: { quantity, replaceCart: true },
-        });
-        expect(cart.ok(), await cart.text()).toBe(true);
-        await page.getByRole('link', { name: 'Gutschein im Warenkorb einlösen' }).click();
+        await page.goto(`/restaurants/${menu.restaurant.slug}`);
+        const add = page.getByRole('button', { name: `${dish.name} in den Warenkorb` });
+        for (let added = 1; added <= quantity; added++) {
+            await add.click();
+            await expect(page.getByRole('link', {
+                name: new RegExp(`Warenkorb, ${added} Gericht`),
+            })).toBeVisible();
+        }
+        await page.getByRole('link', { name: /Warenkorb, \d+ Gericht/ }).click();
         await page.getByRole('button', { name: `Gutschein ${coupon!.code} einlösen` }).click();
         await expect(page.getByRole('button', { name: 'Gutschein entfernen' })).toBeVisible();
         await page.getByRole('button', { name: 'Mit Willenskraft bezahlen' }).click();
